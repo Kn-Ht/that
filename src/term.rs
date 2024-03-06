@@ -69,7 +69,7 @@ impl Terminal {
                 }
                 KeyCode::Enter if self.entering_addr => {
                     self.entering_addr = false;
-                    self.stdout.execute(cursor::Show)?;
+                    self.stdout.execute(cursor::Hide)?;
                     self.input_buf.clear();
                 }
                 _ => {}

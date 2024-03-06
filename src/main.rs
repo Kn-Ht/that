@@ -1,5 +1,7 @@
 use chat::Chat;
 use std::io;
+use std::thread;
+use std::time::Duration;
 
 mod chat;
 mod term;
@@ -24,11 +26,11 @@ fn main_() -> io::Result<()> {
         let status_len;
         let status = if let Some(ref conn) = chat.conn {
             if let Ok(peer) = conn.peer_addr() {
-                let s = format!("✔ connected: {peer}");
+                let s = format!(" ✔ connected: {peer} ");
                 status_len = s.len();
                 s
             } else {
-                let s = "✔ connected";
+                let s = " ✔ connected ";
                 status_len = s.len();
                 s.to_string()
             }
@@ -36,9 +38,9 @@ fn main_() -> io::Result<()> {
             .on_green()
             .bold()
         } else {
-            let s = "✕ not connected";
+            let s = " ✕ not connected ";
             status_len = s.len();
-            s.to_string().white().on_dark_red().bold()
+            s.to_string().white().on_dark_red()
         };
 
         let help = if chat.conn.is_none() {
@@ -65,7 +67,7 @@ fn main_() -> io::Result<()> {
         } else {
             execute! {
                 term.stdout,
-                MoveTo(term.size.0 - help.len() as u16, term.size.1),
+                MoveTo(term.size.0.checked_sub(help.len() as u16).unwrap_or(0), term.size.1),
                 PrintStyledContent(help.on_white().black())
             }?;
         }
@@ -73,6 +75,8 @@ fn main_() -> io::Result<()> {
         if event::poll(term.poll_interval)? {
             term.handle_event(event::read()?, &mut chat)?;
         }
+
+        thread::sleep(Duration::from_millis(50));
     }
 }
 
