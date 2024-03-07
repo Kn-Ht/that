@@ -61,13 +61,16 @@ impl Terminal {
                         self.stdout.execute(cursor::Show)?;
                     }
                 }
+                KeyCode::Char('l') if !self.entering_addr => {
+                    chat.listen()?;
+                }
                 KeyCode::Backspace if self.entering_addr => {
                     let _ = self.input_buf.pop();
                 }
                 KeyCode::Char(c) if self.entering_addr => {
                     self.input_buf.push(c);
                 }
-                KeyCode::Enter if self.entering_addr => {
+                KeyCode::Enter | KeyCode::Esc if self.entering_addr => {
                     self.entering_addr = false;
                     self.stdout.execute(cursor::Hide)?;
                     self.input_buf.clear();

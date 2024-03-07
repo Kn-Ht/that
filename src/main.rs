@@ -1,4 +1,4 @@
-use chat::Chat;
+use chat::{Chat, Connection};
 use std::io;
 use std::thread;
 use std::time::Duration;
@@ -16,7 +16,7 @@ use crossterm::{
 use term::Terminal;
 
 fn main_() -> io::Result<()> {
-    let mut chat = Chat::new(([0, 0, 0, 0], 8080))?;
+    let mut chat = Chat::new(([0, 0, 0, 0], 8080));
     let mut term = Terminal::new()?;
 
     term.update_size()?;
@@ -25,18 +25,35 @@ fn main_() -> io::Result<()> {
     loop {
         let status_len;
         let status = if let Some(ref conn) = chat.conn {
-            if let Ok(peer) = conn.peer_addr() {
-                let s = format!(" ✔ connected: {peer} ");
-                status_len = s.len();
-                s
-            } else {
-                let s = " ✔ connected ";
-                status_len = s.len();
-                s.to_string()
+            match conn {
+                Connection::Client(stream) => if let Ok(peer) = stream.peer_addr() {
+                    let s = format!(" ✔ connected: {peer} ");
+                    status_len = s.len();
+                    s
+                } else {
+                    let s = " ✔ connected ";
+                    status_len = s.len();
+                    s.to_string()
+                }
+                .white()
+                .on_green()
+                .bold(),
+                Connection::Listener(listener) => {
+                    let s = match listener.local_addr() {
+                        Ok(addr) => {
+                            let s = format!(" ◎ listening: {addr} ");
+                            status_len = s.len();
+                            s.on_yellow().white()
+                        },
+                        Err(e) => {
+                            let s = format!(" ◎ listening: {e} ");
+                            status_len = s.len();
+                            s.on_yellow().red()
+                        }
+                    };
+                    s.bold()
+                }
             }
-            .white()
-            .on_green()
-            .bold()
         } else {
             let s = " ✕ not connected ";
             status_len = s.len();
@@ -44,16 +61,16 @@ fn main_() -> io::Result<()> {
         };
 
         let help = if chat.conn.is_none() {
-            "[C - Connect to Address]"
+            "[C: Connect | L: listen]"
         } else {
-            "[Shift-Q - Close Connection]"
+            "[Shift-Q: Disconnect]"
         };
 
         execute! {
             term.stdout,
-            MoveTo(1, term.size.1),
+            MoveTo(0, term.size.1),
             PrintStyledContent(" ".repeat(term.size.0 as usize - 1).on_white()),
-            MoveTo(1, term.size.1),
+            MoveTo(0, term.size.1),
             PrintStyledContent(status),
         }?;
 
